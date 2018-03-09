@@ -33,7 +33,10 @@ static bool state = 0;
 DigitalOut led(LED1);
 
 int main() {
-	i2c.frequency(250000);
+	// 100k
+	// i2c.frequency(100000);
+	// 400k (max @3.3V for MCP23017)
+	i2c.frequency(400000);
 
 	keyboardInterruptIn.mode(PullUp);
 	keyboardInterruptIn.fall(keyboardInterrupt);
@@ -42,7 +45,7 @@ int main() {
 	pollCount = 10;
 
 	while (1) {
-		while (pollCount-- > 0) {
+		for (; pollCount > 0; pollCount--) {
 			uint8_t (&keysCurr)[COLS] = state ? keysA : keysB;
 			uint8_t (&keysPrev)[COLS] = state ? keysB : keysA;
 
