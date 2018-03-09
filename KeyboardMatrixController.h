@@ -78,7 +78,7 @@ class KeyboardMatrixController {
 		if (!ok) return false;
 
 		DEBUG_PRINTF("SET GPIOA\r\n");
-		ok = gpio1.write8(
+		ok = gpio.write8(
 			MCP23017::GPIOA,
 			0b00000000
 		);
