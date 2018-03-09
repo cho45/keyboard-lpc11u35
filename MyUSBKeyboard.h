@@ -71,7 +71,11 @@ public:
 			}
 		}
 
-		// report data is full. ignore last keys
+		// report data is full. delete first key and add new key to last
+		for (int i = 0; i < 5; i++) {
+			inputReportData.data.keycode[i] = inputReportData.data.keycode[i+1];
+		}
+		inputReportData.data.keycode[5] = keycode;
 	}
 
 	void deleteReportData(const uint8_t keycode) {
@@ -81,9 +85,24 @@ public:
 			return;
 		}
 
+		uint8_t pressedKeyCount = 0;
+		for (int i = 0; i < 6; i++) {
+			if (inputReportData.data.keycode[i]) pressedKeyCount++;
+		}
+
 		for (int i = 0; i < 6; i++) {
 			if (inputReportData.data.keycode[i] == keycode) {
+				// remove specified key code
 				inputReportData.data.keycode[i] = 0;
+				pressedKeyCount--;
+				// move over another key codes
+				for (int j = 0; j < 5-i; j++) {
+					inputReportData.data.keycode[i+j] = inputReportData.data.keycode[i+j+1];
+				}
+				// fill zero to ends
+				for (int j = pressedKeyCount; j < 6; j++) {
+					inputReportData.data.keycode[j] = 0;
+				}
 				return;
 			}
 		}
@@ -92,7 +111,7 @@ public:
 	bool queueCurrentReportData() {
 		inputReportData.data.report_id = REPORT_ID_KEYBOARD;
 		inputReportData.data.length = 9;
-		DEBUG_PRINTF("send %d bytes %02x %02x %02x %02x %02x %02x %02x %02x\r\n",
+		DEBUG_PRINTF_KEYEVENT("send %d bytes %02x %02x %02x %02x %02x %02x %02x %02x\r\n",
 			inputReportData.hid_report.length,
 			inputReportData.hid_report.data[0],
 			inputReportData.hid_report.data[1],
