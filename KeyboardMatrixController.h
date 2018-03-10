@@ -16,16 +16,20 @@ class KeyboardMatrixController {
 	 * ROW=GPIOB (input pulled-up)
 	 */
 
-	bool setupGpio(MCP23017& gpio) {
-		int ok;
-		DEBUG_PRINTF("SET IOCON\r\n");
-		ok = gpio.write8(
-			MCP23017::IOCON,
+	static const uint8_t IOCON_VALUE =
 			0<<MCP23017::BANK |
 			1<<MCP23017::MIRROR |
 			1<<MCP23017::SEQOP |
 			0<<MCP23017::DISSLW |
 			1<<MCP23017::ODR // int pin is open drain
+			;
+
+	bool setupGpio(MCP23017& gpio) {
+		int ok;
+		DEBUG_PRINTF("SET IOCON\r\n");
+		ok = gpio.write8(
+			MCP23017::IOCON,
+			IOCON_VALUE
 		);
 		if (!ok) return false;
 
@@ -87,6 +91,12 @@ class KeyboardMatrixController {
 		return true;
 	}
 
+	bool checkGpio(MCP23017& gpio) {
+		int ok;
+		uint8_t read = gpio.read8(MCP23017::IOCON, ok);
+		return read == IOCON_VALUE;
+	}
+
 public:
 	KeyboardMatrixController(I2C& _i2c) :
 		i2c(_i2c),
@@ -113,6 +123,11 @@ public:
 		disableInterrupt();
 
 		if (gpio1_ready) {
+			if (!checkGpio(gpio1)) {
+				DEBUG_PRINTF("checking gpio1 failed. re-setup");
+				setupGpio(gpio1);
+			}
+
 			for (int i = 0; i < 8; i++) {
 				ok = gpio1.write8(
 					MCP23017::GPIOA,
@@ -131,6 +146,11 @@ public:
 
 
 		if (gpio2_ready) {
+			if (!checkGpio(gpio2)) {
+				DEBUG_PRINTF("checking gpio2 failed. re-setup");
+				setupGpio(gpio2);
+			}
+
 			for (int i = 0; i < 8; i++) {
 				ok = gpio2.write8(
 					MCP23017::GPIOA,
