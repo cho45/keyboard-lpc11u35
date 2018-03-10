@@ -125,42 +125,47 @@ public:
 		if (gpio1_ready) {
 			if (!checkGpio(gpio1)) {
 				DEBUG_PRINTF("checking gpio1 failed. re-setup");
-				setupGpio(gpio1);
+				gpio1_ready = setupGpio(gpio1);
 			}
+		}
 
-			for (int i = 0; i < 8; i++) {
+		if (gpio2_ready) {
+			if (!checkGpio(gpio2)) {
+				DEBUG_PRINTF("checking gpio2 failed. re-setup");
+				gpio2_ready = setupGpio(gpio2);
+			}
+		}
+
+		for (int i = 0; i < 8; i++) {
+			if (gpio1_ready) {
 				ok = gpio1.write8(
 					MCP23017::GPIOA,
 					~(1<<i)
 				);
-				wait_us(1);
+			}
+			if (gpio2_ready) {
+				ok = gpio2.write8(
+					MCP23017::GPIOA,
+					~(1<<i)
+				);
+			}
+			wait_us(1);
+			if (gpio1_ready) {
 				keys[i] = gpio1.read8(MCP23017::GPIOB, ok);
 			}
+			if (gpio2_ready) {
+				keys[i+8] = gpio2.read8(MCP23017::GPIOB, ok);
+			}
+		}
 
-			// set all output to negative for interrupt
+		// set all output to negative for interrupt
+		if (gpio1_ready) {
 			ok = gpio1.write8(
 				MCP23017::GPIOA,
 				0b00000000
 			);
 		}
-
-
 		if (gpio2_ready) {
-			if (!checkGpio(gpio2)) {
-				DEBUG_PRINTF("checking gpio2 failed. re-setup");
-				setupGpio(gpio2);
-			}
-
-			for (int i = 0; i < 8; i++) {
-				ok = gpio2.write8(
-					MCP23017::GPIOA,
-					~(1<<i)
-				);
-				wait_us(1);
-				keys[i+8] = gpio2.read8(MCP23017::GPIOB, ok);
-			}
-
-			// set all output to negative for interrupt
 			ok = gpio2.write8(
 				MCP23017::GPIOA,
 				0b00000000
