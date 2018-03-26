@@ -30,7 +30,13 @@ static uint8_t keysB[COLS];
 static bool state = 0;
 #define is_pressed(keys, row, col) (!!(keys[col] & (1<<row)))
 
+// 120Hz = 8.3ms
+// USB polling interval min is 8ms on Windows
+// (ref. https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/content/usbspec/ns-usbspec-_usb_endpoint_descriptor)
+static const uint8_t HID_QUEUE_DURATION_MS = 8;
+
 DigitalOut led(LED1);
+Timer timer;
 
 int main() {
 	// 100k
@@ -42,10 +48,16 @@ int main() {
 	keyboardInterruptIn.fall(keyboardInterrupt);
 
 	keyboardMatrixController.init();
-	pollCount = 10;
 
 	while (1) {
+		timer.start();
 		for (; pollCount > 0; pollCount--) {
+			if (timer.read_ms() < HID_QUEUE_DURATION_MS) {
+				// skip read for a while for HID polling
+				pollCount++;
+				continue;
+			}
+
 			uint8_t (&keysCurr)[COLS] = state ? keysA : keysB;
 			uint8_t (&keysPrev)[COLS] = state ? keysB : keysA;
 
@@ -71,8 +83,10 @@ int main() {
 				if (!ok) {
 					DEBUG_PRINTF_KEYEVENT("send() failed");
 				}
+				timer.reset();
 			}
 		}
+		timer.stop();
 
 		// sleep causes USB stall
 		// sleep();

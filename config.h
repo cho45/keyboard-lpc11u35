@@ -3,7 +3,7 @@
 
 Serial serial(UART_TX, UART_RX);
 
-#define DEBUG 1
+#define DEBUG 0
 #define DEBUG_KEYEVENT 0
 
 #if DEBUG_KEYEVENT
