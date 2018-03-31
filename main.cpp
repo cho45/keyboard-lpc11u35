@@ -25,18 +25,17 @@ static void keyboardInterrupt() {
 // ROWS=8
 // COLS=16
 // 列ごとに1バイトにパックしてキーの状態を保持する
-static uint8_t keysA[COLS];
-static uint8_t keysB[COLS];
-static bool state = 0;
+static uint8_t keys[3][COLS];
+static uint8_t state = 0;
 #define is_pressed(keys, row, col) (!!(keys[col] & (1<<row)))
 
 // 120Hz = 8.3ms
 // USB polling interval min is 8ms on Windows
 // (ref. https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/content/usbspec/ns-usbspec-_usb_endpoint_descriptor)
 static const uint8_t HID_QUEUE_DURATION_MS = 8;
+static const uint8_t BOUNCE_TIME = 4;
 
 DigitalOut led(LED1);
-Timer timer;
 
 int main() {
 	// 100k
@@ -50,23 +49,20 @@ int main() {
 	keyboardMatrixController.init();
 
 	while (1) {
-		timer.start();
 		for (; pollCount > 0; pollCount--) {
-			if (timer.read_ms() < HID_QUEUE_DURATION_MS) {
-				// skip read for a while for HID polling
-				pollCount++;
-				continue;
-			}
 
-			uint8_t (&keysCurr)[COLS] = state ? keysA : keysB;
-			uint8_t (&keysPrev)[COLS] = state ? keysB : keysA;
+			uint8_t (&keysCurr)[COLS] = keys[(state - 0 + 3) % 3];
+			uint8_t (&keysPrev)[COLS] = keys[(state - 1 + 3) % 3];
+			uint8_t (&keysLast)[COLS] = keys[(state - 2 + 3) % 3];
 
 			keyboardMatrixController.scanKeyboard(keysCurr);
 
 			bool queue = false;
 
 			for (int col = 0; col < COLS; col++) {
-				const uint8_t changed = keysPrev[col] ^ keysCurr[col];
+				const uint8_t filtered = (~(keysPrev[col] ^ keysCurr[col]) & keysCurr[col]);
+				const uint8_t changed = keysLast[col] ^ filtered;
+				keysLast[col] = filtered;
 				if (changed) queue = true;
 				for (int row = 0; row < ROWS; row++) {
 					if (changed & (1<<row)) {
@@ -76,17 +72,16 @@ int main() {
 					}
 				}
 			}
-			state = !state;
+			state = (state + 1) % 3;
 
 			if (queue) {
 				bool ok = keyboard.queueCurrentReportData();
 				if (!ok) {
 					DEBUG_PRINTF_KEYEVENT("send() failed");
 				}
-				timer.reset();
 			}
+			wait_ms(BOUNCE_TIME);
 		}
-		timer.stop();
 
 		// sleep causes USB stall
 		// sleep();
