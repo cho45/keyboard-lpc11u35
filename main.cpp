@@ -75,6 +75,8 @@ int main() {
 			state = (state + 1) % 3;
 
 			if (queue) {
+				// ensure unpress event
+				pollCount++;
 				bool ok = keyboard.queueCurrentReportData();
 				if (!ok) {
 					DEBUG_PRINTF_KEYEVENT("send() failed");
